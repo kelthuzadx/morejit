@@ -89,21 +89,27 @@ offset | bytes (in hex) | mnemonics
 }
 
 int main() {
+    jitcode c{500};
+    c.write_text("greeting %x%x!");
+
+    // _i32/_i16/_i8 are user defined literal suffix, they are just
+    // analogous to imm32(val) imm16(val) and imm8(val)
     gen_jitcode {
-        jitcode c{500};
-        c.write_text("greeting %x%x!");
         push(c, ebp);
         mov(c, ebp, esp);
-        push(c, addr(ebp, imm32(16)));
-        push(c, addr(ebp, imm32(12)));
+        push(c, addr(ebp, 16_i32));
+        push(c, addr(ebp, 12_i32));
         push(c, imm32((int)c.get_text_ptr()));
-        call(c, addr(ebp, imm32(8)));
-        add(c, esp, imm32(12));
+        call(c, addr(ebp, 8_i32));
+        add(c, esp, 12_i32);
         pop(c, ebp);
         ret(c);
-        auto func = c.as_function<void (*)(int (*)(const char* const, ...), int,
-                                           int)>();
-        func(&printf, 0xcafe, 0xbabe);
     }
+    c.dump();
+
+    auto func =
+        c.as_function<void (*)(int (*)(const char* const, ...), int, int)>();
+    func(&printf, 0xcafe, 0xbabe);
+    getchar();
     return 0;
 }

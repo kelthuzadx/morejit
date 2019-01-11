@@ -52,6 +52,12 @@ struct imm8 {
     uint8_t val;
 };
 
+imm32 operator"" _i32(unsigned long long val);
+
+imm16 operator"" _i16(unsigned long long val);
+
+imm8 operator"" _i8(unsigned long long val);
+
 template <typename ImmType = imm32, int Size = 32>
 struct addr {
     explicit addr(ImmType disp32);
@@ -84,7 +90,7 @@ public:
 
     char* get_text_ptr(int offset = 0);
 
-    void print();
+    void dump();
 
     template <typename FuncPtrType>
     FuncPtrType as_function();
@@ -112,5 +118,4 @@ private:
     int text_size;
     char* cur_code;
 };
-
 #endif

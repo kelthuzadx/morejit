@@ -11,10 +11,16 @@ jitcode::~jitcode() {
     cur_code = nullptr;
 }
 
+imm32 operator"" _i32(unsigned long long val) { return imm32(val); }
+
+imm16 operator"" _i16(unsigned long long val) { return imm16(val); }
+
+imm8 operator"" _i8(unsigned long long val) { return imm8(val); }
+
 int jitcode::get_alloc_size() const { return alloc_size; }
 
 int jitcode::get_code_size() const {
-    return (alloc_start + text_size) - cur_code;
+    return cur_code - (alloc_start + text_size);
 }
 
 int jitcode::get_text_size() const { return text_size; }
@@ -23,19 +29,24 @@ char* jitcode::get_text_ptr(int offset) {
     return (char*)(alloc_start + offset);
 }
 
-void jitcode::print() {
-    int i = 0;
-    while (i != alloc_size) {
-        if (alloc_start[i] == '\n') {
-            printf("\n");
+void jitcode::dump() {
+    auto dumping = [=](const char* start, int limit) {
+        int i = 0;
+        while (i != limit) {
+            printf("%02x ", (unsigned char)(start + i));
+
             i++;
-            continue;
+            if (i > 15 && i % 16 == 0) {
+                printf("\n");
+            }
         }
-
-        printf("%02x ", (unsigned char)alloc_start[i]);
-
-        i++;
-    }
+    };
+    printf(".text:\n");
+    dumping(alloc_start, text_size);
+    printf("\n");
+    printf(".jitcode:\n");
+    dumping(alloc_start + text_size + 1, get_code_size());
+    printf("\n");
 }
 
 void jitcode::write_text(const char* str) {
