@@ -71,9 +71,6 @@ using namespace std;
 
 #define _modrm(MOD, REG, RM) \
     (uint8_t)((RM & 0x7) | ((REG & 0x7) << 3) | (MOD << 6))
-#define _get_mode(MODRM) (MODRM & 0xC0) >> 6
-#define _get_reg(MODRM) (MODRM & 0X38) >> 3
-#define _get_rm(MODRM) (MODRM & 7)
 
 #define _modsib(SCALE, INDEX, BASE) _modrm(SCALE, INDEX, BASE)
 
@@ -202,15 +199,19 @@ struct addr {
         if (scale == r::esp) {
             static_assert(true, "scale register should not be ESP");
         }
-
-        if (index == 0) {
-            modsib = _modsib(0b00, (int)scale, (int)base);
-        } else if (index == 2) {
-            modsib = _modsib(0b01, (int)scale, (int)base);
-        } else if (index == 4) {
-            modsib = _modsib(0b10, (int)scale, (int)base);
-        } else if (index == 8) {
-            modsib = _modsib(0b11, (int)scale, (int)base);
+        switch (index) {
+            case 0:
+                modsib = _modsib(0b00, (int)scale, (int)base);
+                break;
+            case 2:
+                modsib = _modsib(0b01, (int)scale, (int)base);
+                break;
+            case 4:
+                modsib = _modsib(0b10, (int)scale, (int)base);
+                break;
+            case 8:
+                modsib = _modsib(0b11, (int)scale, (int)base);
+                break;
         }
     }
 
@@ -220,6 +221,9 @@ struct addr {
 };
 
 struct instr {
+    //===----------------------------------------------------------------------===//
+    // mov
+    //===----------------------------------------------------------------------===//
     template <int ImmSize>
     static void mov(jitcode& c, r dest, imm<ImmSize> imm) {
         *c.cur_code++ = (0xb8 + (int)dest);
@@ -278,6 +282,33 @@ struct instr {
         }
         ENABLE_DEBUG()
     }
+    //===----------------------------------------------------------------------===//
+    // push
+    //===----------------------------------------------------------------------===//
+    template <typename ImmType>
+    static void push(jitcode& c, ImmType imme) {
+        if (is_same<ImmType, imm<8>>::value) {
+            *c.cur_code++ = 0x6a;
+        } else {
+            *c.cur_code++ = 0x68;
+        }
+        *(decltype(imme.val)*)c.cur_code = imme.val;
+        c.cur_code += imme.get_bytes();
+        ENABLE_DEBUG()
+    }
+
+    static void push(jitcode& c, r reg) {
+        *c.cur_code++ = 0x50 + reg;
+
+        ENABLE_DEBUG()
+    }
+    //===----------------------------------------------------------------------===//
+    // pop
+    //===----------------------------------------------------------------------===//
+    static void pop(jitcode& c, r reg) {
+        *c.cur_code++ = 0x58 + reg;
+        ENABLE_DEBUG()
+    }
 };
 
 #define __gen_jitcode
@@ -285,6 +316,24 @@ struct instr {
 int main() {
     __gen_jitcode {
         jitcode c(500);
+        instr::push(c, eax);
+        instr::push(c, ebx);
+        instr::push(c, imm<8>(12));
+        instr::push(c, imm<16>(1234));
+        instr::push(c, imm<32>(0x1234546));
+        instr::pop(c, eax);
+        instr::pop(c, ebx);
+        c.print();
+        __asm {
+            push eax
+            push ebx
+            push 12
+            push 1234
+            push 123456h
+            pop eax
+            pop ebx
+        }
+#if 0
         instr::mov(c, ebx, imm<32>(14));
         instr::mov(c, addr(eax), imm<32>(0x435000));
         instr::mov(c, ebx, edi);
@@ -304,37 +353,34 @@ int main() {
         instr::mov(c, addr(eax, edx, 0), edi);
 
         instr::mov(c, addr(ebx, imm<8>(32)), imm<32>(0x535000));
-        instr::mov(c, addr(eax, ebx, 8, imm<8>(45)), imm<32>(0x635000));
+        instr::mov(c, addr(eax, ebx, 8, imm<32>(0x12345678)),
+                   imm<32>(0x635000));
         instr::mov(c, addr(eax, ecx, 2), imm<32>(0x735000));
         instr::mov(c, addr(eax, edx, 0), imm<32>(0x835000));
         c.print();
-#if 0
-        typedef void (*func_ptr)(int __cdecl printf(char const* const, ...),
-                                 int, int);
-        auto f = c.as_function<func_ptr>();
-        f(&printf, 0xab, 0xcd);
+        __asm {
+            mov ebx,14
+            mov dword ptr[eax],435000h
+            mov ebx,edi
+            mov ebx,[32]
+            mov ebx,[eax]
+            mov ebx,[ebx+32]
+            mov ebx,[eax+ebx*8+45]
+            mov ebx,[eax+ecx*2]
+            mov edi,[eax+edx]
+            mov dword ptr[eax],ebx
+            mov dword ptr[ebx+32], ebx
+            mov dword ptr[eax+ebx*8+45],ebx
+            mov dword ptr[eax+ecx*2],ebx
+            mov dword ptr[eax+edx],edi
+            mov dword ptr[ebx+32],535000h
+            mov dword ptr[eax+ebx*8+12345678h],635000h
+            mov dword ptr[eax+ecx*2],735000h
+            mov dword ptr[eax+edx],835000h
+        }
 #endif
     }
-    __asm {
-        mov ebx,14
-        mov dword ptr[eax],435000h
-        mov ebx,edi
-        mov ebx,[32]
-        mov ebx,[eax]
-        mov ebx,[ebx+32]
-        mov ebx,[eax+ebx*8+45]
-        mov ebx,[eax+ecx*2]
-        mov edi,[eax+edx]
-        mov dword ptr[eax],ebx
-        mov dword ptr[ebx+32], ebx
-        mov dword ptr[eax+ebx*8+45],ebx
-        mov dword ptr[eax+ecx*2],ebx
-        mov dword ptr[eax+edx],edi
-        mov dword ptr[ebx+32],535000h
-        mov dword ptr[eax+ebx*8+45],635000h
-        mov dword ptr[eax+ecx*2],735000h
-        mov dword ptr[eax+edx],835000h
-    }
+
 #if 0
     // Startup
     code_ptr code_start = init_jit_code(500);
