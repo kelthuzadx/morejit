@@ -11,12 +11,6 @@ jitcode::~jitcode() {
     cur_code = nullptr;
 }
 
-imm32 operator"" _i32(unsigned long long val) { return imm32(val); }
-
-imm16 operator"" _i16(unsigned long long val) { return imm16(val); }
-
-imm8 operator"" _i8(unsigned long long val) { return imm8(val); }
-
 int jitcode::get_alloc_size() const { return alloc_size; }
 
 int jitcode::get_code_size() const {
@@ -55,3 +49,8 @@ void jitcode::write_text(const char* str) {
     text_size = strlen(str);
     cur_code = (char*)alloc_start + strlen(str) + 1;
 }
+imm32 operator"" _i32(unsigned long long val) { return imm32(val); }
+
+imm16 operator"" _i16(unsigned long long val) { return imm16(val); }
+
+imm8 operator"" _i8(unsigned long long val) { return imm8(val); }

@@ -52,12 +52,6 @@ struct imm8 {
     uint8_t val;
 };
 
-imm32 operator"" _i32(unsigned long long val);
-
-imm16 operator"" _i16(unsigned long long val);
-
-imm8 operator"" _i8(unsigned long long val);
-
 template <typename ImmType = imm32, int Size = 32>
 struct addr {
     explicit addr(ImmType disp32);
@@ -118,4 +112,11 @@ private:
     int text_size;
     char* cur_code;
 };
+
+imm32 operator"" _i32(unsigned long long val);
+
+imm16 operator"" _i16(unsigned long long val);
+
+imm8 operator"" _i8(unsigned long long val);
+
 #endif
