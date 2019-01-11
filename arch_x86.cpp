@@ -78,15 +78,22 @@ using namespace std;
 #define _modsib(SCALE, INDEX, BASE) _modrm(SCALE, INDEX, BASE)
 
 #define INVALID (0)
+#define MOREJIT_DEBUG 1
 
-enum class r : unsigned int { eax, ecx, edx, ebx, esp, ebp, esi, edi };
+#define ENABLE_DEBUG()        \
+    if (MOREJIT_DEBUG) {      \
+        *c.cur_code++ = '\n'; \
+    }
+
+enum r : unsigned int { eax, ecx, edx, ebx, esp, ebp, esi, edi };
+
 struct instr;
 
 class jitcode {
     friend struct instr;
 
 public:
-    explicit jitcode(size_t code_size) {
+    explicit jitcode(size_t code_size) : code_size(code_size) {
         code_start = (char*)VirtualAlloc(
             NULL, code_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
         cur_code = (char*)code_start;
@@ -94,6 +101,21 @@ public:
     ~jitcode() {
         VirtualFree((char*)code_start, 0, MEM_RELEASE);
         cur_code = nullptr;
+    }
+
+    void print() {
+        int i = 0;
+        while (i != code_size) {
+            if (code_start[i] == '\n') {
+                printf("\n");
+                i++;
+                continue;
+            }
+
+            printf("%02x ", (unsigned char)code_start[i]);
+
+            i++;
+        }
     }
 
     template <typename FuncPtrType>
@@ -108,6 +130,7 @@ private:
     jitcode(const jitcode&) = delete;
 
 private:
+    int code_size;
     const char* code_start;
     char* cur_code;
 };
@@ -157,15 +180,19 @@ struct addr {
         if (scale == r::esp) {
             static_assert(true, "scale register should not be ESP");
         }
-
-        if (index == 0) {
-            modsib = _modsib(0b00, (int)scale, (int)base);
-        } else if (index == 2) {
-            modsib = _modsib(0b01, (int)scale, (int)base);
-        } else if (index == 4) {
-            modsib = _modsib(0b10, (int)scale, (int)base);
-        } else if (index == 8) {
-            modsib = _modsib(0b11, (int)scale, (int)base);
+        switch (index) {
+            case 0:
+                modsib = _modsib(0b00, (int)scale, (int)base);
+                break;
+            case 2:
+                modsib = _modsib(0b01, (int)scale, (int)base);
+                break;
+            case 4:
+                modsib = _modsib(0b10, (int)scale, (int)base);
+                break;
+            case 8:
+                modsib = _modsib(0b11, (int)scale, (int)base);
+                break;
         }
     }
 
@@ -198,11 +225,29 @@ struct instr {
         *c.cur_code++ = (0xb8 + (int)dest);
         *(decltype(imm.val)*)c.cur_code = imm.val;
         c.cur_code += imm.get_bytes();
+        ENABLE_DEBUG()
     }
 
+    template <typename DispImmType, int ImmSize>
+    static void mov(jitcode& c, addr<DispImmType> mem, imm<ImmSize> imm) {
+        *c.cur_code++ = 0xc7;
+        _backfill_regfield(mem.modrm, 0);
+        *c.cur_code++ = mem.modrm;
+        if (mem.modsib.has_value()) {
+            *c.cur_code++ = mem.modsib.value();
+        }
+        if (mem.disp.has_value()) {
+            *(decltype(mem.disp.value().val)*)c.cur_code = mem.disp.value().val;
+            c.cur_code += mem.disp.value().get_bytes();
+        }
+        *(decltype(imm.val)*)c.cur_code = imm.val;
+        c.cur_code += imm.get_bytes();
+        ENABLE_DEBUG()
+    }
     static void mov(jitcode& c, r dest, r src) {
         *c.cur_code++ = 0x8b;
         *c.cur_code++ = _modrm(0b11, (int)dest, (int)src);
+        ENABLE_DEBUG()
     }
 
     template <typename ImmType>
@@ -217,6 +262,21 @@ struct instr {
             *(decltype(mem.disp.value().val)*)c.cur_code = mem.disp.value().val;
             c.cur_code += mem.disp.value().get_bytes();
         }
+        ENABLE_DEBUG()
+    }
+    template <typename ImmType>
+    static void mov(jitcode& c, addr<ImmType> mem, r src) {
+        *c.cur_code++ = 0x89;
+        _backfill_regfield(mem.modrm, (int)src);
+        *c.cur_code++ = mem.modrm;
+        if (mem.modsib.has_value()) {
+            *c.cur_code++ = mem.modsib.value();
+        }
+        if (mem.disp.has_value()) {
+            *(decltype(mem.disp.value().val)*)c.cur_code = mem.disp.value().val;
+            c.cur_code += mem.disp.value().get_bytes();
+        }
+        ENABLE_DEBUG()
     }
 };
 
@@ -225,24 +285,55 @@ struct instr {
 int main() {
     __gen_jitcode {
         jitcode c(500);
-        instr::mov(c, r::ebx, imm<32>(14));
-        instr::mov(c, r::ebx, addr(imm<32>(32)));
-        instr::mov(c, r::ebx, addr(r::eax));
-        instr::mov(c, r::ebx, addr(r::ebx, imm<8>(32)));
-        instr::mov(c, r::ebx, addr(r::eax, r::ebx, 8, imm<8>(45)));
-        instr::mov(c, r::ebx, addr(r::eax, r::ecx, 2));
+        instr::mov(c, ebx, imm<32>(14));
+        instr::mov(c, addr(eax), imm<32>(0x435000));
+        instr::mov(c, ebx, edi);
+
+        instr::mov(c, ebx, addr(imm<32>(32)));
+        instr::mov(c, ebx, addr(eax));
+        instr::mov(c, ebx, addr(ebx, imm<8>(32)));
+        instr::mov(c, ebx, addr(eax, ebx, 8, imm<8>(45)));
+        instr::mov(c, ebx, addr(eax, ecx, 2));
+        instr::mov(c, edi, addr(eax, edx, 0));
+
+        instr::mov(c, addr(imm<32>(32)), ebx);
+        instr::mov(c, addr(eax), ebx);
+        instr::mov(c, addr(ebx, imm<8>(32)), ebx);
+        instr::mov(c, addr(eax, ebx, 8, imm<8>(45)), ebx);
+        instr::mov(c, addr(eax, ecx, 2), ebx);
+        instr::mov(c, addr(eax, edx, 0), edi);
+
+        instr::mov(c, addr(ebx, imm<8>(32)), imm<32>(0x535000));
+        instr::mov(c, addr(eax, ebx, 8, imm<8>(45)), imm<32>(0x635000));
+        instr::mov(c, addr(eax, ecx, 2), imm<32>(0x735000));
+        instr::mov(c, addr(eax, edx, 0), imm<32>(0x835000));
+        c.print();
+#if 0
         typedef void (*func_ptr)(int __cdecl printf(char const* const, ...),
                                  int, int);
         auto f = c.as_function<func_ptr>();
         f(&printf, 0xab, 0xcd);
+#endif
     }
     __asm {
         mov ebx,14
+        mov dword ptr[eax],435000h
+        mov ebx,edi
         mov ebx,[32]
         mov ebx,[eax]
         mov ebx,[ebx+32]
         mov ebx,[eax+ebx*8+45]
         mov ebx,[eax+ecx*2]
+        mov edi,[eax+edx]
+        mov dword ptr[eax],ebx
+        mov dword ptr[ebx+32], ebx
+        mov dword ptr[eax+ebx*8+45],ebx
+        mov dword ptr[eax+ecx*2],ebx
+        mov dword ptr[eax+edx],edi
+        mov dword ptr[ebx+32],535000h
+        mov dword ptr[eax+ebx*8+45],635000h
+        mov dword ptr[eax+ecx*2],735000h
+        mov dword ptr[eax+edx],835000h
     }
 #if 0
     // Startup
