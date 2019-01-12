@@ -2,146 +2,208 @@
 #define _INSTR_H
 
 #include "morejit.hpp"
-#include "morejit_x86.hpp"
+#include "type_x86.hpp"
+
+//===----------------------------------------------------------------------===//
+// emit native x86 machine code to jitcode
+//===----------------------------------------------------------------------===//
+struct x86emitter {
+    static void emit_opcode(jitcode& c, uint8_t op) { *c.cur_code++ = op; }
+
+    static void emit_byte(jitcode& c, uint8_t byte) { *c.cur_code++ = byte; }
+
+    template <typename ImmType>
+    static void emit_imm(jitcode& c, ImmType imm);
+
+    template <typename ImmType>
+    static void emit_addr(jitcode& c, addr<ImmType>& mem, int backfill_reg = 0);
+
+    template <typename SrcType, typename DestType>
+    static void emit_reg_2_rm(jitcode& c, SrcType reg, DestType rm,
+                              uint8_t opcode_8bits, uint8_t opcode_16_32_bits,
+                              uint8_t backfill_reg) {
+        if constexpr (is_reg8<DestType>::value) {
+            x86emitter::emit_opcode(c, opcode_8bits);
+            x86emitter::emit_byte(_modrm(0b11, reg.val, rm.val));
+        } else if constexpr (is_reg16or32<DestType>::value) {
+            x86emitter::emit_opcode(c, opcode_16_32_bits);
+            x86emitter::emit_byte(c, _modrm(0b11, reg.val, rm.val));
+        } else if constexpr (is_address<DestType>::value) {
+            if constexpr (is_reg8<SrcType>::value) {
+                x86emitter::emit_opcode(c, opcode_8bits);
+                x86emitter::emit_addr(c, rm, backfill_reg);
+            } else if constexpr (is_reg16or32<SrcType>::value) {
+                x86emitter::emit_opcode(c, opcode_16_32_bits);
+                x86emitter::emit_addr(c, rm, backfill_reg);
+            } else {
+                static_assert(true,
+                              "expects 8/16/32bits register/memory address");
+            }
+        } else {
+            static_assert(true, "expects 8/16/32bits register/memory address");
+        }
+    }
+
+    template <typename SrcType, typename DestType>
+    static void emit_imm_2_rm(jitcode& c, SrcType imm, DestType rm,
+                              uint8_t opcode_8bits, uint8_t opcode_16_32_bits,
+                              uint8_t backfill_reg) {
+        if constexpr (is_reg8<DestType>::value) {
+            x86emitter::emit_opcode(c, opcode_8bits);
+            x86emitter::emit_byte(c, _modrm(0b11, 0, rm.val));
+            x86emitter::emit_imm(c, imm);
+        } else if constexpr (is_reg16or32<DestType>::value) {
+            x86emitter::emit_opcode(c, opcode_16_32_bits);
+            x86emitter::emit_byte(c, _modrm(0b11, 0, rm.val));
+            x86emitter::emit_imm(c, imm);
+        } else if constexpr (is_address<DestType>::value) {
+            if constexpr (is_reg8<SrcType>::value) {
+                x86emitter::emit_opcode(c, opcode_8bits);
+                x86emitter::emit_addr(c, rm, backfill_reg);
+                x86emitter::emit_imm(c, imm);
+            } else if constexpr (is_reg16or32<SrcType>::value) {
+                x86emitter::emit_opcode(c, opcode_16_32_bits);
+                x86emitter::emit_addr(c, rm, backfill_reg);
+                x86emitter::emit_imm(c, imm);
+            } else {
+                static_assert(true,
+                              "expects 8/16/32bits register/memory address");
+            }
+        } else {
+            static_assert(true, "expects 8/16/32bits register/memory address");
+        }
+    }
+
+    template <typename SrcType, typename DestType>
+    static void emit_addr_2_reg(jitcode& c, addr<SrcType> addr, DestType reg,
+                                uint8_t opcode_8bits, uint8_t opcode_16_32_bits,
+                                uint8_t backfill_reg) {
+        if constexpr (is_reg8<DestType>::value) {
+            x86emitter::emit_opcode(c, opcode_8bits);
+            x86emitter::emit_addr(c, addr, backfill_reg);
+        } else if constexpr (is_reg16or32<DestType>::value) {
+            x86emitter::emit_opcode(c, opcode_16_32_bits);
+            x86emitter::emit_addr(c, addr, backfill_reg);
+        } else {
+            static_assert(true, "expects 8/16/32bits register");
+        }
+    }
+};
+
+template <typename ImmType>
+inline void x86emitter::emit_imm(jitcode& c, ImmType imm) {
+    *(decltype(imm.val)*)c.cur_code = imm.val;
+    c.cur_code += imm.get_bytes();
+}
+
+template <typename ImmType>
+inline void x86emitter::emit_addr(jitcode& c, addr<ImmType>& mem,
+                                  int backfill_reg) {
+    _backfill_regfield(mem.modrm, backfill_reg);
+    *c.cur_code++ = mem.modrm;
+    if (mem.modsib.has_value()) {
+        *c.cur_code++ = mem.modsib.value();
+    }
+    if (mem.disp.has_value()) {
+        emit_imm(c, mem.disp.value());
+    }
+}
 
 namespace instr {
-template <typename T>
-using is_register = std::is_enum<T>;
 //===----------------------------------------------------------------------===//
 // mov
 //===----------------------------------------------------------------------===//
-template <typename DestType, typename ImmType>
-inline void mov(jitcode& c, DestType dest, ImmType src) {
-    // If destination operand is register
-    if constexpr (is_register<DestType>::value) {
-        c.emit_opcode(0xb8 + (int)dest);
-        c.emit_imm(src);
-    }
-    // Otherwise, it represents a memory address
-    else {
-        c.emit_opcode(0xc7);
-        c.emit_addr(dest);
-        c.emit_imm(src);
-    }
-}
-
-template <typename DestType>
-inline void mov(jitcode& c, DestType dest, reg src) {
-    if constexpr (is_register<DestType>::value) {
-        c.emit_opcode(0x8b);
-        c.emit_byte(_modrm(0b11, (int)dest, (int)src));
+template <typename DestType, typename SrcType>
+inline void mov(jitcode& c, DestType dest, SrcType src) {
+    if constexpr (is_immediate<SrcType>::value) {
+        x86emitter::emit_imm_2_rm(c, src, dest, 0xb0 + dest.val,
+                                  0xb8 + dest.val, 0);
+    } else if constexpr (is_register<SrcType>::value) {
+        x86emitter::emit_reg_2_rm(c, src, dest, 0x88, 0x89, src.val);
+    } else if constexpr (is_address<SrcType>::value) {
+        x86emitter::emit_addr_2_reg(c, src, dest, 0x8a, 0x8b, dest.val);
     } else {
-        c.emit_opcode(0x89);
-        c.emit_addr(dest, (int)src);
-    }
-}
-template <typename DestType, typename ImmType>
-inline void mov(jitcode& c, DestType dest, addr<ImmType> src) {
-    if constexpr (is_register<DestType>::value) {
-        c.emit_opcode(0x8b);
-        c.emit_addr(src);
+        static_assert(true, "only expects type of address/register/immediate");
     }
 }
 //===----------------------------------------------------------------------===//
 // add
 //===----------------------------------------------------------------------===//
-template <typename DestType, typename ImmType>
-inline void add(jitcode& c, DestType dest, ImmType src) {
-    if constexpr (is_register<DestType>::value) {
-        c.emit_opcode(is_same<ImmType, imm8>::value ? 0x80 : 0x81);
-        c.emit_byte(_modrm(0b11, 0, (int)dest));
-        c.emit_imm(src);
+template <typename DestType, typename SrcType>
+inline void add(jitcode& c, DestType dest, SrcType src) {
+    if constexpr (is_immediate<SrcType>::value) {
+        x86emitter::emit_imm_2_rm(c, src, dest, 0x80, 0x81, 0);
+    } else if constexpr (is_register<SrcType>::value) {
+        x86emitter::emit_reg_2_rm(c, src, dest, 0x0, 0x1, src.val);
+    } else if constexpr (is_address<SrcType>::value) {
+        x86emitter::emit_addr_2_reg(c, src, dest, 0x2, 0x3, dest.val);
     } else {
-        c.emit_opcode(is_same<ImmType, imm8>::value ? 0x80 : 0x81);
-        c.emit_addr(dest);
-        c.emit_imm(src);
+        static_assert(true, "only expects type of address/register/immediate");
     }
-}
-
-template <typename DestType>
-inline void add(jitcode& c, DestType dest, reg src) {
-    if constexpr (is_register<DestType>::value) {
-        c.emit_opcode(0x3);
-        c.emit_byte(_modrm(0b11, (int)dest, (int)src));
-    } else {
-        c.emit_opcode(is_same<DestType, addr<imm8>>::value ? 0x0 : 0x1);
-        c.emit_addr(dest, (int)src);
-    }
-}
-
-template <typename ImmType>
-inline void add(jitcode& c, reg dest, addr<ImmType> src) {
-    c.emit_opcode(is_same<ImmType, imm8>::value ? 0x2 : 0x3);
-    c.emit_addr(src, (int)dest);
 }
 //===----------------------------------------------------------------------===//
 // sub
 //===----------------------------------------------------------------------===//
-template <typename DestType, typename ImmType>
-inline void sub(jitcode& c, DestType dest, ImmType src) {
-    if constexpr (is_register<DestType>::value) {
-        c.emit_opcode(is_same<ImmType, imm8>::value ? 0x80 : 0x81);
-        c.emit_byte(_modrm(0b11, 5, (int)dest));
-        c.emit_imm(src);
+template <typename DestType, typename SrcType>
+inline void sub(jitcode& c, DestType dest, SrcType src) {
+    if constexpr (is_immediate<SrcType>::value) {
+        x86emitter::emit_imm_2_rm(c, src, dest, 0x80, 0x81, 5);
+    } else if constexpr (is_register<SrcType>::value) {
+        x86emitter::emit_reg_2_rm(c, src, dest, 0x28, 0x29, src.val);
+    } else if constexpr (is_address<SrcType>::value) {
+        x86emitter::emit_addr_2_reg(c, src, dest, 0x2a, 0x2b, dest.val);
     } else {
-        c.emit_opcode(is_same<ImmType, imm8>::value ? 0x80 : 0x81);
-        c.emit_addr(dest, 5);
-        c.emit_imm(src);
+        static_assert(true, "only expects type of address/register/immediate");
+        ;
     }
 }
-
-template <typename DestType>
-inline void sub(jitcode& c, DestType dest, reg src) {
-    if constexpr (is_register<DestType>::value) {
-        c.emit_opcode(0x2b);
-        c.emit_byte(_modrm(0b11, (int)dest, (int)src));
-    } else {
-        c.emit_opcode(is_same<DestType, addr<imm8>>::value ? 0x28 : 0x29);
-        c.emit_addr(dest, (int)src);
-    }
-}
-
-template <typename ImmType>
-inline void sub(jitcode& c, reg dest, addr<ImmType> src) {
-    c.emit_opcode(is_same<ImmType, imm8>::value ? 0x2a : 0xab);
-    c.emit_addr(src, (int)dest);
-}
-
 //===----------------------------------------------------------------------===//
 // call
 //===----------------------------------------------------------------------===//
-template <typename ImmType>
-inline void call(jitcode& c, ImmType operand) {
-    c.emit_opcode(0xe8);
-    c.emit_imm(operand);
-}
-
-template <typename ImmType>
-inline void call(jitcode& c, addr<ImmType> operand) {
-    c.emit_opcode(0xff);
-    c.emit_addr(operand, 2);
+template <typename OperandType>
+inline void call(jitcode& c, OperandType operand) {
+    if constexpr (is_immediate<OperandType>::value) {
+        x86emitter::emit_opcode(c, 0xe8);
+        x86emitter::emit_imm(c, operand);
+    } else if constexpr (is_address<OperandType>::value) {
+        x86emitter::emit_opcode(c, 0xff);
+        x86emitter::emit_addr(c, operand, 2);
+    } else {
+        static_assert(true, "only expects type of address/immediate");
+    }
 }
 //===----------------------------------------------------------------------===//
 // push
 //===----------------------------------------------------------------------===//
-template <typename ImmType>
-inline void push(jitcode& c, ImmType operand) {
-    c.emit_opcode(is_same<ImmType, imm8>::value ? 0x6a : 0x68);
-    c.emit_imm(operand);
+template <typename OperandType>
+inline void push(jitcode& c, OperandType operand) {
+    if constexpr (is_immediate<OperandType>::value) {
+        x86emitter::emit_opcode(
+            c, is_same<OperandType, imm8>::value ? 0x6a : 0x68);
+        x86emitter::emit_imm(c, operand);
+    } else if constexpr (is_address<OperandType>::value) {
+        x86emitter::emit_opcode(c, 0xff);
+        x86emitter::emit_addr(c, operand, 6);
+    } else if constexpr (is_register<OperandType>::value) {
+        x86emitter::emit_opcode(c, 0x50 + operand.val);
+    } else {
+        static_assert(true, "only expects type of address/register/immediate");
+    }
 }
-template <typename ImmType>
-inline void push(jitcode& c, addr<ImmType> operand) {
-    c.emit_opcode(0xff);
-    c.emit_addr(operand, 6);
-}
-inline void push(jitcode& c, reg operand) { c.emit_opcode(0x50 + operand); }
 //===----------------------------------------------------------------------===//
 // pop
 //===----------------------------------------------------------------------===//
-inline void pop(jitcode& c, reg operand) { c.emit_opcode(0x58 + operand); }
+template <typename OperandType>
+inline void pop(jitcode& c, OperandType operand) {
+    if constexpr (is_register<OperandType>::value) {
+        x86emitter::emit_opcode(c, 0x58 + operand.val);
+    } else {
+        static_assert(true, "only expects type of register");
+    }
+}
 //===----------------------------------------------------------------------===//
 // ret
 //===----------------------------------------------------------------------===//
-inline void ret(jitcode& c) { c.emit_opcode(0xc3); }
+inline void ret(jitcode& c) { x86emitter::emit_opcode(c, 0xc3); }
 };      // namespace instr
 #endif  // !_INSTR_H

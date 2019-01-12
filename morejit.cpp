@@ -27,7 +27,7 @@ void jitcode::dump() {
     auto dumping = [=](const char* start, int limit) {
         int i = 0;
         while (i != limit) {
-            printf("%02x ", (unsigned char)(start + i));
+            printf("%02x ", (*(uint8_t*)(start + i)));
 
             i++;
             if (i > 15 && i % 16 == 0) {
@@ -49,8 +49,3 @@ void jitcode::write_text(const char* str) {
     text_size = strlen(str);
     cur_code = (char*)alloc_start + strlen(str) + 1;
 }
-imm32 operator"" _i32(unsigned long long val) { return imm32(val); }
-
-imm16 operator"" _i16(unsigned long long val) { return imm16(val); }
-
-imm8 operator"" _i8(unsigned long long val) { return imm8(val); }

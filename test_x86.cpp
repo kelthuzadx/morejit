@@ -1,5 +1,6 @@
 #include "instr_x86.hpp"
 #include "morejit.hpp"
+#include "type_x86.hpp"
 void test_arch_x86() {
 #if 0
 // Demos
@@ -101,7 +102,7 @@ int main() {
         push(c, addr(ebp, 12_i32));
         push(c, imm32((int)c.get_text_ptr()));
         call(c, addr(ebp, 8_i32));
-        add(c, esp, 12_i32);
+        add(c, esp, imm32(12));
         pop(c, ebp);
         ret(c);
     }
