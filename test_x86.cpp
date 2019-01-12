@@ -1,4 +1,4 @@
-#include "instrx86.hpp"
+#include "instr_x86.hpp"
 #include "morejit.hpp"
 void test_arch_x86() {
 #if 0
