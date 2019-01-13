@@ -19,10 +19,40 @@ struct x86jitcode : public jitcode {
     inline void add(DestType dest, SrcType src);
 
     //===----------------------------------------------------------------------===//
+    // AND 每 Logical AND
+    //===----------------------------------------------------------------------===//
+    template <typename DestType, typename SrcType>
+    inline void and_(DestType dest, SrcType src);
+
+    //===----------------------------------------------------------------------===//
     // CALL 每 Call Procedure (in same segment)
     //===----------------------------------------------------------------------===//
     template <typename OperandType>
     inline void call(OperandType operand);
+
+    
+    //===----------------------------------------------------------------------===//
+    // CMP 每 Compare Two Operands
+    //===----------------------------------------------------------------------===//
+    template <typename DestType, typename SrcType>
+    inline void cmp(DestType dest, SrcType src);
+
+    //===----------------------------------------------------------------------===//
+    // DEC 每 Decrement by 1
+    //===----------------------------------------------------------------------===//
+    template <typename OperandType>
+    inline void dec(OperandType operand);
+
+    //===----------------------------------------------------------------------===//
+    // HLT 每 Hal
+    //===----------------------------------------------------------------------===//
+    inline void hlt();
+
+    //===----------------------------------------------------------------------===//
+    // DIV 每 Unsigned Divide
+    //===----------------------------------------------------------------------===//
+    template <typename OperandType>
+    inline void div(OperandType operand)
 
     //===----------------------------------------------------------------------===//
     // MOV 每 Move Data

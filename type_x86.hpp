@@ -152,6 +152,12 @@ using is_w = std::disjunction<
     std::conjunction<std::is_integral<DestType>,
                      std::is_same<std::integral_constant<int, sizeof(DestType)>,
                                   std::integral_constant<int, 1>>>>;
+template <typename SrcType>
+using is_w1 = std::disjunction<
+    is_reg8<SrcType>,
+    std::conjunction<std::is_integral<SrcType>,
+                     std::is_same<std::integral_constant<int, sizeof(SrcType)>,
+                                  std::integral_constant<int, 1>>>>;
 
 template <typename OperandType>
 using is_s = std::is_same<std::integral_constant<int, sizeof(OperandType)>,

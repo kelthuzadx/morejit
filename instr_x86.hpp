@@ -31,7 +31,37 @@ inline void x86jitcode::add(DestType dest, SrcType src) {
         static_assert(true, "unexpects types");
     }
 }
-
+//===----------------------------------------------------------------------===//
+// AND 每 Logical AND
+//===----------------------------------------------------------------------===//
+template <typename DestType, typename SrcType>
+inline void x86jitcode::and_(DestType dest, SrcType src) {
+    if constexpr (is_reg_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0010, 0000)
+                                               : BIN(0010, 0001));
+        emit_u8(_modrm(0b11, src.val, dest.val));
+    } else if constexpr (is_mem_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0010, 0010)
+                                               : BIN(0010, 0011));
+        emit_addr(src, dest.val);
+    } else if constexpr (is_reg_2_mem<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0010, 0000)
+                                               : BIN(0010, 0001));
+        emit_addr(dest, src.val);
+    } else if constexpr (is_imm_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0000)
+                                               : BIN(1000, 0001));
+        emit_u8(_modrm(0b11, 0b100, dest.val));
+        emit_imm(src);
+    } else if constexpr (is_imm_2_mem<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0000)
+                                               : BIN(1000, 0001));
+        emit_addr(dest, 0b100);
+        emit_imm(src);
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
 //===----------------------------------------------------------------------===//
 // CALL 每 Call Procedure (in same segment)
 //===----------------------------------------------------------------------===//
@@ -50,6 +80,71 @@ inline void x86jitcode::call(OperandType operand) {
         static_assert(true, "unexpects types");
     }
 }
+//===----------------------------------------------------------------------===//
+// CMP 每 Compare Two Operands
+//===----------------------------------------------------------------------===//
+template <typename DestType, typename SrcType>
+inline void x86jitcode::cmp(DestType dest, SrcType src) {
+    if constexpr (is_reg_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0011, 1000)
+                                               : BIN(0011, 1001));
+        emit_u8(_modrm(0b11, src.val, dest.val));
+    } else if constexpr (is_mem_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0011, 1000)
+                                               : BIN(0011, 1001));
+        emit_addr(src, dest.val);
+    } else if constexpr (is_reg_2_mem<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0011, 1010)
+                                               : BIN(0011, 1011));
+        emit_addr(dest, src.val);
+    } else if constexpr (is_imm_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0000)
+                                               : BIN(1000, 0001));
+        emit_u8(_modrm(0b11, 0b111, dest.val));
+        emit_imm(src);
+    } else if constexpr (is_imm_2_mem<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0000)
+                                               : BIN(1000, 0001));
+        emit_addr(dest, 0b111);
+        emit_imm(src);
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
+//===----------------------------------------------------------------------===//
+// DEC 每 Decrement by 1
+//===----------------------------------------------------------------------===//
+template <typename OperandType>
+inline void x86jitcode::dec(OperandType operand) {
+    if constexpr (is_address<OperandType>::value) {
+        emit_u8(is_w1<OperandType>::value ? BIN(1111, 1110) : BIN(1111, 1111);
+        emit_addr(operand, 0b001);
+    } else if constexpr (is_register<OperandType>::value) {
+        emit_u8(is_w1<OperandType>::value ? BIN(1111, 1110) : BIN(1111, 1111));
+        emit_u8(_modrm(0b11, 0b001, operand.val));
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
+//===----------------------------------------------------------------------===//
+// DIV 每 Unsigned Divide
+//===----------------------------------------------------------------------===//
+template <typename OperandType>
+inline void x86jitcode::div(OperandType operand) {
+    if constexpr (is_address<OperandType>::value) {
+        emit_u8(is_w1<OperandType>::value ? BIN(1111, 0110) : BIN(1111, 0111);
+        emit_addr(operand, 0b110);
+    } else if constexpr (is_register<OperandType>::value) {
+        emit_u8(is_w1<OperandType>::value ? BIN(1111, 0110) : BIN(1111, 0111));
+        emit_u8(_modrm(0b11, 0b110, operand.val));
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
+//===----------------------------------------------------------------------===//
+// HLT 每 Hal
+//===----------------------------------------------------------------------===//
+inline void x86jitcode::hlt() { emit_u8(BIN(1111,0100)); }
 
 //===----------------------------------------------------------------------===//
 // MOV 每 Move Data
