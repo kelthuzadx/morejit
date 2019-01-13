@@ -1,5 +1,5 @@
-#ifndef _MOREJIT_X86_H
-#define _MOREJIT_X86_H
+#ifndef _TYPE_X86_H
+#define _TYPE_X86_H
 
 #include <any>
 #include "morejit.hpp"
@@ -22,57 +22,6 @@ using std::is_same;
 //===----------------------------------------------------------------------===//
 // definitions of 8/16/32bits general-purpose registers
 //===----------------------------------------------------------------------===//
-#define eax \
-    reg32 { 0 }
-#define ecx \
-    reg32 { 1 }
-#define edx \
-    reg32 { 2 }
-#define ebx \
-    reg32 { 3 }
-#define esp \
-    reg32 { 4 }
-#define ebp \
-    reg32 { 5 }
-#define esi \
-    reg32 { 6 }
-#define edi \
-    reg32 { 7 }
-
-#define ax \
-    reg16 { 0 }
-#define cx \
-    reg16 { 1 }
-#define dx \
-    reg16 { 2 }
-#define bx \
-    reg16 { 3 }
-#define sp \
-    reg16 { 4 }
-#define bp \
-    reg16 { 5 }
-#define si \
-    reg16 { 6 }
-#define di \
-    reg16 { 7 }
-
-#define al \
-    reg8 { 0 }
-#define cl \
-    reg8 { 1 }
-#define dl \
-    reg8 { 2 }
-#define bl \
-    reg8 { 3 }
-#define ah \
-    reg8 { 4 }
-#define ch \
-    reg8 { 5 }
-#define dh \
-    reg8 { 6 }
-#define bh \
-    reg8 { 7 }
-
 struct reg8 {
     explicit reg8(uint8_t val) : val(val) {}
     const uint8_t val;
@@ -85,6 +34,10 @@ struct reg32 {
     explicit reg32(uint8_t val) : val(val) {}
     const uint8_t val;
 };
+
+inline reg32 eax{0}, ecx{1}, edx{2}, ebx{3}, esp{4}, ebp{5}, esi{6}, edi{7};
+inline reg16 ax{0}, cx{1}, dx{2}, bx{3}, sp{4}, bp{5}, si{6}, di{7};
+inline reg8 al{0}, cl{1}, dl{2}, bl{3}, ah{4}, ch{5}, dh{6}, bh{7};
 //===----------------------------------------------------------------------===//
 // definitions of memory address, it currently only supports 32 bits(dword ptr)
 //===----------------------------------------------------------------------===//

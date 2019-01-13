@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <optional>
 #include <type_traits>
-
+#include <unordered_map>
 #define __jitcode
 
 class jitcode {
@@ -33,9 +33,14 @@ public:
 
     void write_text(const char* str);
 
-    void emit_u8(uint8_t byte) { *cur_code++ = byte; }
+    void emit_u8(std::uint8_t byte) { *cur_code++ = byte; }
+
+    void label(const char* label_name) { labels.emplace(label_name, cur_code);}
+
+    const char* get_label(const char* name) { return labels.find(name)->second; }
 
 protected:
+    std::unordered_map<std::string, char*> labels;
     const int alloc_size;
     const char* alloc_start;
     int text_size;
