@@ -1,6 +1,7 @@
 #include "instr_x86.hpp"
-#include "morejit.hpp"
+#include "morejit_x86.hpp"
 #include "type_x86.hpp"
+
 void test_arch_x86() {
 #if 0
 // Demos
@@ -90,27 +91,27 @@ offset | bytes (in hex) | mnemonics
 }
 
 int main() {
-    jitcode c{500};
-    c.write_text("greeting %x%x!");
-
     // _i32/_i16/_i8 are user defined literal suffix, they are just
     // analogous to imm32(val) imm16(val) and imm8(val)
-    gen_jitcode {
-        push(c, ebp);
-        mov(c, ebp, esp);
-        push(c, addr(ebp, 16_i32));
-        push(c, addr(ebp, 12_i32));
-        push(c, imm32((int)c.get_text_ptr()));
-        call(c, addr(ebp, 8_i32));
-        add(c, esp, imm32(12));
-        pop(c, ebp);
-        ret(c);
-    }
-    c.dump();
+    x86jitcode c{500};
+    __jitcode {
 
-    auto func =
-        c.as_function<void (*)(int (*)(const char* const, ...), int, int)>();
-    func(&printf, 0xcafe, 0xbabe);
+        c.write_text("greeting %x%x!");
+        c.push(ebp);
+        c.mov(ebp, esp);
+        c.push(addr(ebp, 16));
+        c.push(addr(ebp, 12));
+        c.push((int)c.get_text_ptr());
+        c.call(addr(ebp, 8));
+        c.add(esp, 12);
+        c.pop(ebp);
+        c.ret();
+        c.dump();
+
+        auto func = c.as_function<void (*)(int (*)(const char* const, ...), int,
+                                           int)>();
+        func(&printf, 0xcafe, 0xbabe);
+    }
     getchar();
     return 0;
 }

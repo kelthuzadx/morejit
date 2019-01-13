@@ -6,13 +6,9 @@
 #include <optional>
 #include <type_traits>
 
-#define gen_jitcode using namespace instr;
+#define __jitcode
 
-struct x86emitter;
-
-class jitcode final {
-    friend struct x86emitter;
-
+class jitcode {
 public:
     explicit jitcode(size_t alloc_size);
     ~jitcode();
@@ -30,18 +26,16 @@ public:
 
     template <typename FuncPtrType>
     inline FuncPtrType as_function() {
-        static_assert(is_pointer<FuncPtrType>::value,
+        static_assert(std::is_pointer<FuncPtrType>::value,
                       "expects function pointer type");
         return (FuncPtrType)(alloc_start + text_size + 1);
     }
 
     void write_text(const char* str);
 
-private:
-    jitcode& operator=(const jitcode&) = delete;
-    jitcode(const jitcode&) = delete;
+    void emit_u8(uint8_t byte) { *cur_code++ = byte; }
 
-private:
+protected:
     const int alloc_size;
     const char* alloc_start;
     int text_size;
