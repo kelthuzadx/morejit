@@ -254,6 +254,41 @@ inline void x86jitcode::mov(DestType dest, SrcType src) {
         static_assert(true, "unexpects types");
     }
 }
+//===----------------------------------------------------------------------===//
+// MUL ¨C Unsigned Multiply
+//===----------------------------------------------------------------------===//
+template <typename OperandType>
+inline void x86jitcode::mul(OperandType operand) {
+    if constexpr (is_address<OperandType>::value) {
+        emit_u8(is_w1<OperandType>::value ? BIN(1111, 0110) : BIN(1111, 0111));
+        emit_addr(operand, 0b100);
+    } else if constexpr (is_register<OperandType>::value) {
+        emit_u8(is_w1<OperandType>::value ? BIN(1111, 0110) : BIN(1111, 0111));
+        emit_u8(_modrm(0b11, 0b100, operand.val));
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
+//===----------------------------------------------------------------------===//
+// NEG ¨C Two's Complement Negation
+//===----------------------------------------------------------------------===//
+template <typename OperandType>
+inline void x86jitcode::neg(OperandType operand) {
+    if constexpr (is_address<OperandType>::value) {
+        emit_u8(is_w1<OperandType>::value ? BIN(1111, 0110) : BIN(1111, 0111));
+        emit_addr(operand, 0b011);
+    } else if constexpr (is_register<OperandType>::value) {
+        emit_u8(is_w1<OperandType>::value ? BIN(1111, 0110) : BIN(1111, 0111));
+        emit_u8(_modrm(0b11, 0b011, operand.val));
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
+
+//===----------------------------------------------------------------------===//
+// NOP ¨C No Operatio
+//===----------------------------------------------------------------------===//
+inline void x86jitcode::nop() { emit_u8(BIN(1001,0000)); }
 
 //===----------------------------------------------------------------------===//
 // POP - Pop a Word from the Stack
