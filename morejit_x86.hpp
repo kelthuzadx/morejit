@@ -52,7 +52,7 @@ struct x86jitcode : public jitcode {
     // DIV ¨C Unsigned Divide
     //===----------------------------------------------------------------------===//
     template <typename OperandType>
-    inline void div(OperandType operand)
+    inline void div(OperandType operand);
 
     //===----------------------------------------------------------------------===//
     // MOV ¨C Move Data

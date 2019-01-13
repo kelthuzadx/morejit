@@ -117,7 +117,7 @@ inline void x86jitcode::cmp(DestType dest, SrcType src) {
 template <typename OperandType>
 inline void x86jitcode::dec(OperandType operand) {
     if constexpr (is_address<OperandType>::value) {
-        emit_u8(is_w1<OperandType>::value ? BIN(1111, 1110) : BIN(1111, 1111);
+        emit_u8(is_w1<OperandType>::value ? BIN(1111, 1110) : BIN(1111, 1111));
         emit_addr(operand, 0b001);
     } else if constexpr (is_register<OperandType>::value) {
         emit_u8(is_w1<OperandType>::value ? BIN(1111, 1110) : BIN(1111, 1111));
@@ -132,7 +132,7 @@ inline void x86jitcode::dec(OperandType operand) {
 template <typename OperandType>
 inline void x86jitcode::div(OperandType operand) {
     if constexpr (is_address<OperandType>::value) {
-        emit_u8(is_w1<OperandType>::value ? BIN(1111, 0110) : BIN(1111, 0111);
+        emit_u8(is_w1<OperandType>::value ? BIN(1111, 0110) : BIN(1111, 0111));
         emit_addr(operand, 0b110);
     } else if constexpr (is_register<OperandType>::value) {
         emit_u8(is_w1<OperandType>::value ? BIN(1111, 0110) : BIN(1111, 0111));
