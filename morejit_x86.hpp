@@ -21,7 +21,7 @@ struct x86jitcode : public jitcode {
     // AND 每 Logical AND
     //===----------------------------------------------------------------------===//
     template <typename DestType, typename SrcType>
-    inline void and_(DestType dest, SrcType src);
+    inline void and(DestType dest, SrcType src);
 
     //===----------------------------------------------------------------------===//
     // CALL 每 Call Procedure (in same segment)
@@ -88,10 +88,11 @@ struct x86jitcode : public jitcode {
     inline void mov(DestType dest, SrcType src);
 
     //===----------------------------------------------------------------------===//
-// MUL 每 Unsigned Multiply
-//===----------------------------------------------------------------------===//
+    // MUL 每 Unsigned Multiply
+    //===----------------------------------------------------------------------===//
     template <typename OperandType>
     inline void mul(OperandType operand);
+
     //===----------------------------------------------------------------------===//
     // NEG 每 Two's Complement Negation
     //===----------------------------------------------------------------------===//
@@ -104,10 +105,21 @@ struct x86jitcode : public jitcode {
     inline void nop();
 
     //===----------------------------------------------------------------------===//
+    // NOT 每 One's Complement Negation
+    //===----------------------------------------------------------------------===//
+    template <typename OperandType>
+    inline void not(OperandType operand);
+    //===----------------------------------------------------------------------===//
     // POP 每 Pop a Word from the Stack
     //===----------------------------------------------------------------------===//
     template <typename OperandType>
     inline void pop(OperandType operand);
+
+    //===----------------------------------------------------------------------===//
+    // OR 每 Logical Inclusive OR
+    //===----------------------------------------------------------------------===//
+    template <typename DestType, typename SrcType>
+    inline void or(DestType dest, SrcType src);
 
     //===----------------------------------------------------------------------===//
     // PUSH 每 Push Operand onto the Stack
