@@ -374,5 +374,67 @@ inline void x86jitcode::push(OperandType operand) {
 // RET
 //===----------------------------------------------------------------------===//
 inline void x86jitcode::ret() { emit_u8(0xc3); }
-
+//===----------------------------------------------------------------------===//
+// SAR ¨C Shift Arithmetic Right
+//===----------------------------------------------------------------------===//
+template <typename OperandType1,typename OperandType2>
+inline void x86jitcode::sar(OperandType1 op1,OperandType2 op2) {
+    if constexpr (is_address<OperandType1>::value
+        &&is_immediate<OperandType2>::value
+        && sizeof(OperandType2) == 1) {
+        emit_u8(is_w1<OperandType1>::value ? BIN(1100, 0000): BIN(1100, 0001));
+        emit_addr(operand, 0b111);
+        emit_imm(op2);
+    } else if constexpr (is_register<OperandType1>::value
+        &&is_immediate<OperandType2>::value
+        &&sizeof(OperandType2)==1) {
+        emit_u8(is_w1<OperandType1>::value ? BIN(1100, 0000): BIN(1100, 0001));
+        emit_u8(_modsib(0b11, 0b111, op1.val));
+        emit_imm(op2);
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
+//===----------------------------------------------------------------------===//
+// SHL ¨C Shift Left
+//===----------------------------------------------------------------------===//
+template <typename OperandType1, typename OperandType2>
+inline void x86jitcode::shl(OperandType1 op1, OperandType2 op2) {
+    if constexpr (is_address<OperandType1>::value
+        &&is_immediate<OperandType2>::value
+        && sizeof(OperandType2) == 1) {
+        emit_u8(is_w1<OperandType1>::value ? BIN(1100, 0000) : BIN(1100, 0001));
+        emit_addr(operand, 0b100);
+        emit_imm(op2);
+    } else if constexpr (is_register<OperandType1>::value
+        &&is_immediate<OperandType2>::value
+        && sizeof(OperandType2) == 1) {
+        emit_u8(is_w1<OperandType1>::value ? BIN(1100, 0000) : BIN(1100, 0001));
+        emit_u8(_modsib(0b11, 0b100, op1.val));
+        emit_imm(op2);
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
+//===----------------------------------------------------------------------===//
+// SHR ¨C Shift Right
+//===----------------------------------------------------------------------===//
+template <typename OperandType1, typename OperandType2>
+inline void x86jitcode::shr(OperandType1 op1, OperandType2 op2) {
+    if constexpr (is_address<OperandType1>::value
+        &&is_immediate<OperandType2>::value
+        && sizeof(OperandType2) == 1) {
+        emit_u8(is_w1<OperandType1>::value ? BIN(1100, 0000) : BIN(1100, 0001));
+        emit_addr(operand, 0b101);
+        emit_imm(op2);
+    } else if constexpr (is_register<OperandType1>::value
+        &&is_immediate<OperandType2>::value
+        && sizeof(OperandType2) == 1) {
+        emit_u8(is_w1<OperandType1>::value ? BIN(1100, 0000) : BIN(1100, 0001));
+        emit_u8(_modsib(0b11, 0b101, op1.val));
+        emit_imm(op2);
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
 #endif  // !_INSTR_X86_H

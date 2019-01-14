@@ -131,6 +131,23 @@ struct x86jitcode : public jitcode {
     // RET
     //===----------------------------------------------------------------------===//
     inline void ret();
+
+    //===----------------------------------------------------------------------===//
+    // SAR ¨C Shift Arithmetic Right
+    //===----------------------------------------------------------------------===//
+    template <typename OperandType1, typename OperandType2>
+    inline void sar(OperandType1 op1, OperandType2 op2);
+
+    //===----------------------------------------------------------------------===//
+    // SHL ¨C Shift Left
+    //===----------------------------------------------------------------------===//
+    template <typename OperandType1, typename OperandType2>
+    inline void shl(OperandType1 op1, OperandType2 op2);
+    //===----------------------------------------------------------------------===//
+    // SHR ¨C Shift Right
+    //===----------------------------------------------------------------------===//
+    template <typename OperandType1, typename OperandType2>
+    inline void shr(OperandType1 op1, OperandType2 op2);
 };
 
 template<typename ImmType> 
