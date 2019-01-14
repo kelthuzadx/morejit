@@ -437,4 +437,85 @@ inline void x86jitcode::shr(OperandType1 op1, OperandType2 op2) {
         static_assert(true, "unexpects types");
     }
 }
+//===----------------------------------------------------------------------===//
+// SUB ¨C Integer Subtraction
+//===----------------------------------------------------------------------===//
+template <typename DestType, typename SrcType>
+inline void x86jitcode::sub(DestType dest, SrcType src) {
+    if constexpr (is_reg_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0010, 1000) : BIN(0010, 1001));
+        emit_u8(_modrm(0b11, src.val, dest.val));
+    } else if constexpr (is_mem_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0010, 1010) : BIN(0010, 1011));
+        emit_addr(src, dest.val);
+    } else if constexpr (is_reg_2_mem<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0010, 1000) : BIN(0010, 1001));
+        emit_addr(dest, src.val);
+    } else if constexpr (is_imm_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0000) : BIN(1000, 0001));
+        emit_u8(_modrm(0b11, 0b101, dest.val));
+        emit_imm(src);
+    } else if constexpr (is_imm_2_mem<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0000) : BIN(1000, 0001));
+        emit_addr(dest, 0b101);
+        emit_imm(src);
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
+//===----------------------------------------------------------------------===//
+// TEST ¨C Logical Compare
+//===----------------------------------------------------------------------===//
+template <typename DestType, typename SrcType>
+inline void x86jitcode::test(DestType dest, SrcType src) {
+    if constexpr (is_reg_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0100) : BIN(1000, 0101));
+        emit_u8(_modrm(0b11, src.val, dest.val));
+    }
+    // test reg,mem is analogous to test mem,reg. Intel instruction manual supports
+    // only test mem,reg, so this is a syntaic surgar of supporting test reg,mem
+    else if constexpr (is_mem_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0100) : BIN(1000, 0101));
+        emit_addr(src, dest.val);
+    } else if constexpr (is_reg_2_mem<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0100) : BIN(1000, 0101));
+        emit_addr(dest, src.val);
+    } else if constexpr (is_imm_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1111, 0110) : BIN(1111, 0111));
+        emit_u8(_modrm(0b11, 0b000, dest.val));
+        emit_imm(src);
+    } else if constexpr (is_imm_2_mem<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1111, 0110) : BIN(1111, 0111));
+        emit_addr(dest, 0b000);
+        emit_imm(src);
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
+//===----------------------------------------------------------------------===//
+// SUB ¨C Integer Subtraction
+//===----------------------------------------------------------------------===//
+template <typename DestType, typename SrcType>
+inline void x86jitcode::xor(DestType dest, SrcType src) {
+    if constexpr (is_reg_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0011, 0000) : BIN(0011, 0001));
+        emit_u8(_modrm(0b11, src.val, dest.val));
+    } else if constexpr (is_mem_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0011, 0010) : BIN(0011, 0011));
+        emit_addr(src, dest.val);
+    } else if constexpr (is_reg_2_mem<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(0011, 0000) : BIN(0011, 0001));
+        emit_addr(dest, src.val);
+    } else if constexpr (is_imm_2_reg<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0000) : BIN(1000, 0001));
+        emit_u8(_modrm(0b11, 0b110, dest.val));
+        emit_imm(src);
+    } else if constexpr (is_imm_2_mem<SrcType, DestType>::value) {
+        emit_u8(is_w<SrcType, DestType>::value ? BIN(1000, 0000) : BIN(1000, 0001));
+        emit_addr(dest, 0b110);
+        emit_imm(src);
+    } else {
+        static_assert(true, "unexpects types");
+    }
+}
 #endif  // !_INSTR_X86_H

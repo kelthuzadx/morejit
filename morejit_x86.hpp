@@ -143,11 +143,29 @@ struct x86jitcode : public jitcode {
     //===----------------------------------------------------------------------===//
     template <typename OperandType1, typename OperandType2>
     inline void shl(OperandType1 op1, OperandType2 op2);
+
     //===----------------------------------------------------------------------===//
     // SHR 每 Shift Right
     //===----------------------------------------------------------------------===//
     template <typename OperandType1, typename OperandType2>
     inline void shr(OperandType1 op1, OperandType2 op2);
+
+    //===----------------------------------------------------------------------===//
+    // SUB 每 Integer Subtraction
+    //===----------------------------------------------------------------------===//
+    template <typename DestType, typename SrcType>
+    inline void sub(DestType dest, SrcType src);
+
+        //===----------------------------------------------------------------------===//
+    // TEST 每 Logical Compare
+    //===----------------------------------------------------------------------===//
+    template <typename DestType, typename SrcType>
+    inline void test(DestType dest, SrcType src);
+    //===----------------------------------------------------------------------===//
+    // SUB 每 Integer Subtraction
+    //===----------------------------------------------------------------------===//
+    template <typename DestType, typename SrcType>
+    inline void xor(DestType dest, SrcType src);
 };
 
 template<typename ImmType> 
