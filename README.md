@@ -1,5 +1,5 @@
 # morejit
-morejit can facilitate generating architecture-dependent machine code at runtime. In general, it can be used to build a **JIT** compiler, you can also use it to write some shellcode at runtime to ensure the robustness of your system or do anything which requires dynamical creation behaviors.
+morejit can facilitate generating architecture-dependent machine code at runtime. In general, it can be used to build a **JIT** compiler, you can also use it to write some shellcode at runtime to ensure the robustness of your system or do anything which requires dynamic creation behaviors.
 
 # Overview
 This demo shows how to use **morejit**, it will generate machine code for Intel x86 architecture and call it immediately:
@@ -24,8 +24,9 @@ int main() {
         c.add(esp, 12);
         c.pop(ebp);
         c.ret();
-        c.dump();
     }
+    // Dump generated native code to stdout
+    c.dump();
 
     // Perform function
     auto func =
@@ -33,8 +34,40 @@ int main() {
     func(&printf, 0xcafe, 0xbabe);
 }
 ```
-Simplely put, this codelet allocates an `executable+writable+readable` memory arean using platform-dependent function(For windows, that's `VirtualAlloc/Free`), and fullfil machine code into it. Note that `_i32/_i16/_i8` are user defined literal suffixs, they are just analogous to `imm32(val)` `imm16(val)` and `imm8(val)`. After that, it forcely covnerts the pointer points to this memory arean as a function `fun`, passes three arguments and calls it. We will get the following output:
+Simplely put, this codelet allocates an `executable+writable+readable` memory arean using platform-dependent function(For windows, that's `VirtualAlloc/Free`), and fullfil machine code into it. After that, it forcely covnerts the pointer points to this memory arean as a function `fun`, passes three arguments and calls it. We will get the following output:
 ![](docs/demo.png)
+
+# Supported x86 instruction set
+All instructions are lower-cases in source code, e.g, `mov(eax,addr(ebx,ecx,4,7))` moves data from memory address `[ebx,ecx*4+7]` to `eax`. For more details about how to use APIs, see its accompanying demonstrations.
+
+| instruction | description |
+| :---------: | :---------: |
+| ADD | Add |
+| AND | Logical AND |
+| CALL | Call Procedure (in same segment) |       
+| CMP | Compare Two Operands |
+| DEC | Decrement by 1 |
+| DIV | Unsigned Divide |
+| HLT | Hal |    
+| IDIV | Signed Divide |
+| IMUL | Signed Multiply |
+| INC | Increment by 1 |
+| JMP | Unconditional Jump (to same segment) |
+| MOV | Move Data |
+| MUL | Unsigned Multiply |
+| NEG | Two's Complement Negation |
+| NOP | No Operatio |    
+| NOT | One's Complement Negation |
+| POP | Pop a Word from the Stack |
+| OR | Logical Inclusive OR |
+| PUSH | Push Operand onto the Stack |
+| RET | Return from Procedure (to same segment) |
+| SAR | Shift Arithmetic Right |
+| SHL | Shift Left |
+| SHR | Shift Right |
+| SUB | Integer Subtraction |
+| TEST | Logical Compare |
+| SUB | Integer Subtraction |
 
 # Details
 Intel architecture instructions formats are as follows:

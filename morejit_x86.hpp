@@ -128,7 +128,7 @@ struct x86jitcode : public jitcode {
     inline void push(OperandType operand);
 
     //===----------------------------------------------------------------------===//
-    // RET
+    // RET ¨C Return from Procedure (to same segment)
     //===----------------------------------------------------------------------===//
     inline void ret();
 
